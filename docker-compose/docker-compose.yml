@@ -1,0 +1,90 @@
+version: "3.7"
+
+volumes:
+  keycloak_db:
+    driver: local
+  backend_db:
+    driver: local
+
+services:
+  keycloak-db:
+    image: mysql:5.7
+    container_name: keycloak-db
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: keycloak
+      MYSQL_USER: keycloak
+      MYSQL_PASSWORD: kcwpf
+    volumes:
+      - keycloak_db:/var/lib/mysql
+
+  keycloak:
+    # TODO: update Keycloak image: quay.io/keycloak/keycloak:legacy
+    image: quay.io/keycloak/keycloak:15.1.1
+    container_name: keycloak
+    restart: unless-stopped
+    environment:
+      DB_VENDOR: MYSQL
+      DB_ADDR: keycloak-db
+      DB_DATABASE: keycloak
+      DB_USER: keycloak
+      DB_PASSWORD: kcwpf
+      KEYCLOAK_LOGLEVEL: WARNING
+      KEYCLOAK_USER: admin
+      KEYCLOAK_PASSWORD: kcwpf
+      KEYCLOAK_IMPORT: '/opt/jboss/keycloak/imports/local-realm.json -Dkeycloak.profile.feature.upload_scripts=enabled'
+      PROXY_ADDRESS_FORWARDING: true
+    volumes:
+      # Realm configuration file for import
+      - "./keycloak/hsa-theme:/opt/jboss/keycloak/themes/hsa-theme:ro"
+      - "./keycloak/import/local-realm.json:/opt/jboss/keycloak/imports/local-realm.json:ro"
+    depends_on:
+      - keycloak-db
+
+  wpf-frontend:
+    image: dominikhrn/subject-registration-frontend:dev
+    restart: always
+    container_name: wpf-frontend
+    volumes:
+      - ./wpf/keycloak.json:/usr/share/nginx/html/keycloak.json:ro
+  
+  backend-db:
+    image: mysql:5.7
+    container_name: backend-db
+    restart: unless-stopped
+    ports:
+      - 3306:3306
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: wpf
+      MYSQL_USER: wpf
+      MYSQL_PASSWORD: wpf
+    volumes:
+      - backend_db:/var/lib/mysql
+      - ./initdb:/docker-entrypoint-initdb.d
+  
+  backend:
+    image: dominikhrn/subject-registration:dev
+    container_name: wpf-backend
+    
+    environment:
+      SERVER_PORT: 8080
+      SPRING_DATASOURCE_URL: "jdbc:mysql://backend-db:3306/wpf"
+      SPRING_DATASOURCE_USERNAME: "wpf"
+      SPRING_DATASOURCE_PASSWORD: "wpf"
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK-SET-URI: "http://keycloak:8080/auth/realms/hsa/protocol/openid-connect/certs"
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER-URI: "http://localhost/auth/realms/hsa"
+
+    depends_on:
+      - keycloak
+
+  nginx:
+    image: nginx:1.19.1
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf
+    depends_on:
+      - keycloak
+      - wpf-frontend
