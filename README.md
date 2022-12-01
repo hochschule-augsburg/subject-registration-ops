@@ -3,11 +3,31 @@
 This repository contains the scripts and necessary files to put the
 HSA subject registration into operation.
 
-## Docker Compose (local test environment)
+## Local setup with Vagrant
 
-```sh
-cd docker-compose
-docker-compose up -d
+Start a plain debian VM with vagrant and run the setup playbooks:
+
+```
+vagrant up
+vagrant ssh # (run at least once to setup ssh key)
+
+ansible-playbook -i hosts/vagrant setup.yml
+ansible-playbook -i hosts/vagrant subjectreg.yml
 ```
 
-You can view the web ui under http://localhost
+## Production setup
+
+```
+ansible-playbook -i hosts/prod setup.yml
+ansible-playbook -i hosts/prod subjectreg.yml
+```
+
+## Post-Setup
+
+**Create an admin user for Keycloak:**
+
+Adding default credentials to the dockerfile has caused issues when restarting the Keycloak container.
+
+```
+docker exec <CONTAINER> /opt/jboss/keycloak/bin/add-user-keycloak.sh -u <USERNAME> -p <PASSWORD>
+```

@@ -1,0 +1,7 @@
+---
+letsencrypt: false
+letsencrypt_email: user@example.com
+
+keycloak_realm: 'local'
+web_url: 'http://localhost'
+web_domain: 'localhost'

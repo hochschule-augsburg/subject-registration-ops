@@ -1,0 +1,10 @@
+[server]
+subject-registration
+
+[server:vars]
+ansible_user=vagrant
+
+letsencrypt_en=false
+keycloak_realm=local
+web_url=http://subject-registration
+web_domain=subject-registration

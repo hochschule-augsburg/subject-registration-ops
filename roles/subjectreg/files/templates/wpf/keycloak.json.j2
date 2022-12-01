@@ -1,6 +1,6 @@
 {
-  "realm": "hsa",
-  "auth-server-url": "http://localhost/auth/",
+  "realm": "{{ keycloak_realm }}",
+  "auth-server-url": "{{ web_url }}/auth/",
   "ssl-required": "external",
   "resource": "wpf-rest-api",
   "public-client": true,

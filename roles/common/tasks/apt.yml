@@ -1,0 +1,21 @@
+---
+- name: Install unattended-upgrades
+  package:
+    name: unattended-upgrades
+    state: present
+
+- name: Add periodic config for apt
+  copy:
+    src: 'apt/10periodic'
+    dest: '/etc/apt/apt.conf.d/10periodic'
+    owner: root
+    group: root
+
+- name: Add unattended upgrade config for apt
+  copy:
+    src: 'apt/50unattended-upgrades'
+    dest: '/etc/apt/apt.conf.d/50unattended-upgrades'
+    owner: root
+    group: root
+  notify:
+   - restart unattended-upgrades

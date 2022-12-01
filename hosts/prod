@@ -1,0 +1,11 @@
+[server]
+subject-registration.informatik.hs-augsburg.de
+
+[server:vars]
+ansible_user=thdev2
+
+letsencrypt_en=true
+letsencrypt_email=thomas.hampp@hs-augsburg.de
+keycloak_realm=hsa
+web_url=https://subject-registration.informatik.hs-augsburg.de
+web_domain=subject-registration.informatik.hs-augsburg.de

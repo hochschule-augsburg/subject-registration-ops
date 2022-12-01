@@ -1,0 +1,39 @@
+---
+- hosts: all
+  become: yes
+
+  tasks:
+    - name: Common setup tasks
+      include_role:
+        name: common
+      vars:
+        ssh_keys:
+          - "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIO/dOqRvDKSfWKXj4ANyfuimzCYpdGa37hkk1wwEjNaL thetadev@ThetaStation"
+
+    - name: Install Docker
+      include_role:
+        name: geerlingguy.docker
+      vars:
+        docker_daemon_options:
+          storage-driver: overlay2
+        docker_install_compose: false
+
+    - name: Install Docker Compose
+      pip:
+        name: docker-compose
+
+    - name: Create prune-containers cronjob
+      cron:
+        name: docker-prune-containers
+        hour: "2"
+        minute: "0"
+        job: "docker container prune -f"
+    
+    - name: Setup watchtower
+      community.docker.docker_container:
+        name: watchtower
+        image: containrrr/watchtower
+        volumes:
+          - /var/run/docker.sock:/var/run/docker.sock
+        env:
+          WATCHTOWER_POLL_INTERVAL: '300'

@@ -1,0 +1,101 @@
+version: "3"
+
+services:
+  nginx:
+{% if letsencrypt_en == 'true' %}
+    image: jonasal/nginx-certbot:latest
+    environment:
+      CERTBOT_EMAIL: '{{ letsencrypt_email }}'
+    volumes:
+      - nginx_secrets:/etc/letsencrypt
+      - ./nginx:/etc/nginx/user_conf.d
+{% else %}
+    image: nginx
+    volumes:
+      - ./nginx:/etc/nginx/conf.d
+{% endif %}
+    ports:
+      - 80:80
+      - 443:443
+    restart: unless-stopped
+    depends_on:
+      - keycloak
+      - backend
+      - frontend
+
+  keycloak-db:
+    image: mysql:5.7
+    container_name: keycloak-db
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: keycloak
+      MYSQL_USER: keycloak
+      MYSQL_PASSWORD: kcwpf
+    volumes:
+      - keycloak_db:/var/lib/mysql
+
+  keycloak:
+    # TODO: update Keycloak image: quay.io/keycloak/keycloak:legacy
+    image: quay.io/keycloak/keycloak:15.1.1
+    container_name: keycloak
+    restart: unless-stopped
+    environment:
+      DB_VENDOR: MYSQL
+      DB_ADDR: keycloak-db
+      DB_DATABASE: keycloak
+      DB_USER: keycloak
+      DB_PASSWORD: kcwpf
+      KEYCLOAK_LOGLEVEL: WARNING
+      # KEYCLOAK_USER: admin
+      # KEYCLOAK_PASSWORD: kcwpf
+      KEYCLOAK_IMPORT: "/opt/jboss/keycloak/imports/{{ keycloak_realm }}-realm.json -Dkeycloak.profile.feature.upload_scripts=enabled"
+      PROXY_ADDRESS_FORWARDING: "true"
+    volumes:
+      # Realm configuration file for import
+      - "./keycloak/hsa-theme:/opt/jboss/keycloak/themes/hsa-theme:ro"
+      - "./keycloak/import/{{ keycloak_realm }}-realm.json:/opt/jboss/keycloak/imports/{{ keycloak_realm }}-realm.json:ro"
+    depends_on:
+      - keycloak-db
+
+  # backend-db:
+  #   image: mysql:5.7
+  #   container_name: backend-db
+  #   restart: unless-stopped
+  #   environment:
+  #     MYSQL_ROOT_PASSWORD: root
+  #     MYSQL_DATABASE: wpf
+  #     MYSQL_USER: wpf
+  #     MYSQL_PASSWORD: wpf
+  #   volumes:
+  #     - backend_db:/var/lib/mysql
+  #     - ./initdb:/docker-entrypoint-initdb.d
+  #   command: ['mysqld', '--character-set-server=utf8mb4', '--collation-server=utf8mb4_unicode_ci']
+
+  backend:
+    image: dominikhrn/subject-registration:dev
+    container_name: wpf-backend
+    restart: unless-stopped
+    environment:
+      SERVER_PORT: 8080
+      # SPRING_DATASOURCE_URL: "jdbc:mysql://backend-db:3306/wpf"
+      # SPRING_DATASOURCE_USERNAME: "wpf"
+      # SPRING_DATASOURCE_PASSWORD: "wpf"
+      # SPRING_JPA_DATABASE: "mysql"
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK-SET-URI: "http://keycloak:8080/auth/realms/{{ keycloak_realm }}/protocol/openid-connect/certs"
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER-URI: "{{ web_url }}/auth/realms/{{ keycloak_realm }}"
+    depends_on:
+      - keycloak
+      # - backend-db
+
+  frontend:
+    image: dominikhrn/subject-registration-frontend:dev
+    restart: unless-stopped
+    container_name: wpf-frontend
+    volumes:
+      - ./wpf/keycloak.json:/usr/share/nginx/html/keycloak.json:ro
+
+volumes:
+  nginx_secrets:
+  keycloak_db:
+  # backend_db:

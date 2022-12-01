@@ -1,0 +1,8 @@
+---
+- hosts: all
+  become: yes
+
+  tasks:
+    - name: Install subject registration application
+      include_role:
+        name: subjectreg
