@@ -3,6 +3,14 @@
 This repository contains the scripts and necessary files to put the
 HSA subject registration into operation.
 
+## Ansible dependencies
+
+This playbook requires the `geerlingguy.docker` role.
+
+```
+ansible-galaxy install geerlingguy.docker
+```
+
 ## Local setup with Vagrant
 
 Start a plain debian VM with vagrant and run the setup playbooks:
